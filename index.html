@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Облік посилок PRO</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+*{box-sizing:border-box}
+body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,sans-serif;
+    background:#111;
+    color:#fff;
+    padding:15px;
+}
+h2{text-align:center;margin-bottom:10px}
+input,select,button{
+    width:100%;
+    padding:12px;
+    margin:6px 0;
+    border-radius:10px;
+    border:none;
+    font-size:15px;
+}
+input,select{background:#1c1c1e;color:#fff}
+button{background:#0a84ff;color:#fff}
+button.delete{background:#ff453a}
+button.save{background:#30d158}
+button.export{background:#34c759}
+.price-row{display:flex;gap:5px;align-items:center}
+.price-row input{flex:1}
+.checkbox-inline{display:flex;align-items:center;gap:4px;font-size:13px}
+.trip-card{
+    background:#1c1c1e;
+    margin-top:20px;
+    padding:12px;
+    border-radius:14px;
+}
+.trip-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    cursor:pointer;
+}
+.summary{font-size:13px;margin:6px 0}
+table{
+    width:100%;
+    min-width:1000px;
+    border-collapse:collapse;
+    margin-top:8px;
+}
+th,td{
+    padding:6px;
+    font-size:12px;
+    text-align:center;
+    border-bottom:1px solid #2c2c2e;
+}
+th{background:#0a84ff}
+.green{color:#30d158;font-weight:bold}
+.yellow{color:#ffd60a;font-weight:bold}
+</style>
+</head>
+
+<body>
+
+<h2>Облік посилок PRO</h2>
+
+<input id="tripName" placeholder="Назва рейсу">
+<button onclick="createTrip()">Створити рейс</button>
+
+<select id="tripSelect"></select>
+<button class="delete" onclick="deleteTrip()">Видалити рейс</button>
+
+<input id="fullName" placeholder="Прізвище та Імʼя">
+<input id="parcelNumber" placeholder="Номер" inputmode="numeric">
+<input id="phone" placeholder="Телефон" inputmode="numeric">
+<input id="city" placeholder="Місто">
+<input id="branch" placeholder="Відділення">
+<input id="places" type="number" placeholder="Місця">
+<input id="volume" placeholder="Обʼєм (0.2,0.3)">
+<input id="weight" type="number" placeholder="Вага">
+
+<div class="price-row">
+    <input id="price" type="number" placeholder="Ціна">
+    <label class="checkbox-inline"><input type="checkbox" id="ourPayment">Наша</label>
+    <label class="checkbox-inline"><input type="checkbox" id="invoice">Рах.</label>
+</div>
+
+<input id="note" placeholder="Примітка">
+
+<button id="mainButton" onclick="addOrUpdate()">Додати посилку</button>
+
+<div id="tripsContainer"></div>
+
+<script>
+
+let parcels = JSON.parse(localStorage.getItem("parcels"))||[];
+let trips = JSON.parse(localStorage.getItem("trips"))||[];
+let editId = null;
+
+function save(){
+    localStorage.setItem("parcels",JSON.stringify(parcels));
+    localStorage.setItem("trips",JSON.stringify(trips));
+}
+
+function createTrip(){
+    const name=tripName.value.trim();
+    if(!name||trips.includes(name))return;
+    trips.push(name);
+    tripName.value="";
+    save();
+    renderTrips();
+}
+
+function deleteTrip(){
+    const trip=tripSelect.value;
+    if(!trip)return;
+    if(!confirm("Видалити рейс?"))return;
+    parcels=parcels.filter(p=>p.trip!==trip);
+    trips=trips.filter(t=>t!==trip);
+    save();
+    renderTrips();
+}
+
+function calculateVolumeSum(str){
+    if(!str)return 0;
+    return str.split(",").map(v=>parseFloat(v)||0).reduce((a,b)=>a+b,0);
+}
+
+function addOrUpdate(){
+    const trip=tripSelect.value;
+    if(!trip)return alert("Створіть рейс");
+
+    const data={
+        id:editId||Date.now(),
+        trip,
+        fullName:fullName.value,
+        number:parcelNumber.value,
+        phone:phone.value,
+        city:city.value,
+        branch:branch.value,
+        places:+places.value||0,
+        volume:volume.value,
+        volumeTotal:calculateVolumeSum(volume.value),
+        weight:+weight.value||0,
+        price:+price.value||0,
+        ourPayment:ourPayment.checked,
+        invoice:invoice.checked,
+        note:note.value
+    };
+
+    if(editId){
+        parcels=parcels.map(p=>p.id===editId?data:p);
+        editId=null;
+        mainButton.textContent="Додати посилку";
+    }else{
+        parcels.push(data);
+    }
+
+    clearForm();
+    save();
+    renderTrips();
+}
+
+function editParcel(id){
+    const p=parcels.find(x=>x.id===id);
+    if(!p)return;
+    editId=id;
+    tripSelect.value=p.trip;
+    fullName.value=p.fullName;
+    parcelNumber.value=p.number;
+    phone.value=p.phone;
+    city.value=p.city;
+    branch.value=p.branch;
+    places.value=p.places;
+    volume.value=p.volume;
+    weight.value=p.weight;
+    price.value=p.price;
+    ourPayment.checked=p.ourPayment;
+    invoice.checked=p.invoice;
+    note.value=p.note;
+    mainButton.textContent="Зберегти";
+    window.scrollTo({top:0,behavior:"smooth"});
+}
+
+function deleteParcel(id){
+    parcels=parcels.filter(p=>p.id!==id);
+    save();
+    renderTrips();
+}
+
+function clearForm(){
+    document.querySelectorAll("input").forEach(i=>{
+        if(i.type==="checkbox") i.checked=false;
+        else i.value="";
+    });
+}
+
+function toggleTrip(id){
+    const el=document.getElementById(id);
+    el.style.display=el.style.display==="none"?"block":"none";
+}
+
+function renderTrips(){
+    tripSelect.innerHTML="";
+    trips.forEach(t=>{
+        let opt=document.createElement("option");
+        opt.value=t;
+        opt.textContent=t;
+        tripSelect.appendChild(opt);
+    });
+
+    tripsContainer.innerHTML="";
+
+    trips.forEach(trip=>{
+        const tripParcels=parcels.filter(p=>p.trip===trip);
+        if(!tripParcels.length)return;
+
+        const total=tripParcels.reduce((s,p)=>s+p.price,0);
+        const totalOur=tripParcels.filter(p=>p.ourPayment).reduce((s,p)=>s+p.price,0);
+        const totalInvoice=tripParcels.filter(p=>p.invoice).reduce((s,p)=>s+p.price,0);
+
+        const card=document.createElement("div");
+        card.className="trip-card";
+
+        card.innerHTML=`
+        <div class="trip-header" onclick="toggleTrip('body_${trip}')">
+            <strong>${trip}</strong>
+            <span>▼</span>
+        </div>
+        <div class="summary">
+            💰 ${total} грн |
+            <span class="green">Наша: ${totalOur}</span> |
+            <span class="yellow">Рахунок: ${totalInvoice}</span>
+        </div>
+        <div id="body_${trip}">
+        <div style="overflow-x:auto">
+        <table>
+        <tr>
+            <th>ПІБ</th><th>№</th><th>Місто</th><th>Обʼєм</th><th>Ціна</th>
+            <th>Наша</th><th>Рах.</th><th>✏️</th><th>❌</th>
+        </tr>
+        ${tripParcels.map(p=>`
+            <tr>
+                <td>${p.fullName}</td>
+                <td>${p.number}</td>
+                <td>${p.city}</td>
+                <td>${p.volumeTotal}</td>
+                <td>${p.price}</td>
+                <td>${p.ourPayment?"✓":""}</td>
+                <td>${p.invoice?"✓":""}</td>
+                <td><button onclick="editParcel(${p.id})">✏️</button></td>
+                <td><button class="delete" onclick="deleteParcel(${p.id})">X</button></td>
+            </tr>
+        `).join("")}
+        </table>
+        </div>
+        </div>
+        `;
+
+        tripsContainer.appendChild(card);
+    });
+}
+
+renderTrips();
+
+</script>
+</body>
+</html>
