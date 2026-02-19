@@ -27,7 +27,6 @@ input,select,button{
 input,select{background:#1c1c1e;color:#fff}
 button{background:#0a84ff;color:#fff}
 button.delete{background:#ff453a}
-button.save{background:#30d158}
 button.export{background:#34c759}
 .price-row{display:flex;gap:5px;align-items:center}
 .price-row input{flex:1}
@@ -47,7 +46,7 @@ button.export{background:#34c759}
 .summary{font-size:13px;margin:6px 0}
 table{
     width:100%;
-    min-width:1000px;
+    min-width:1100px;
     border-collapse:collapse;
     margin-top:8px;
 }
@@ -76,7 +75,8 @@ th{background:#0a84ff}
 <input id="fullName" placeholder="Прізвище та Імʼя">
 <input id="parcelNumber" placeholder="Номер" inputmode="numeric">
 <input id="phone" placeholder="Телефон" inputmode="numeric">
-<input id="city" placeholder="Місто">
+<input id="city" list="citiesList" placeholder="Місто">
+<datalist id="citiesList"></datalist>
 <input id="branch" placeholder="Відділення">
 <input id="places" type="number" placeholder="Місця">
 <input id="volume" placeholder="Обʼєм (0.2,0.3)">
@@ -84,8 +84,12 @@ th{background:#0a84ff}
 
 <div class="price-row">
     <input id="price" type="number" placeholder="Ціна">
-    <label class="checkbox-inline"><input type="checkbox" id="ourPayment">Наша</label>
-    <label class="checkbox-inline"><input type="checkbox" id="invoice">Рах.</label>
+    <label class="checkbox-inline">
+        <input type="checkbox" id="ourPayment"> Наша оплата
+    </label>
+    <label class="checkbox-inline">
+        <input type="checkbox" id="invoice"> Рахунок
+    </label>
 </div>
 
 <input id="note" placeholder="Примітка">
@@ -98,11 +102,13 @@ th{background:#0a84ff}
 
 let parcels = JSON.parse(localStorage.getItem("parcels"))||[];
 let trips = JSON.parse(localStorage.getItem("trips"))||[];
-let editId = null;
+let savedCities = JSON.parse(localStorage.getItem("cities"))||[];
+let editId=null;
 
 function save(){
     localStorage.setItem("parcels",JSON.stringify(parcels));
     localStorage.setItem("trips",JSON.stringify(trips));
+    localStorage.setItem("cities",JSON.stringify(savedCities));
 }
 
 function createTrip(){
@@ -128,6 +134,24 @@ function calculateVolumeSum(str){
     if(!str)return 0;
     return str.split(",").map(v=>parseFloat(v)||0).reduce((a,b)=>a+b,0);
 }
+
+function saveCity(city){
+    if(city && !savedCities.includes(city)){
+        savedCities.push(city);
+        save();
+        updateCitySuggestions();
+    }
+}
+
+function updateCitySuggestions(){
+    citiesList.innerHTML="";
+    savedCities.forEach(c=>{
+        let opt=document.createElement("option");
+        opt.value=c;
+        citiesList.appendChild(opt);
+    });
+}
+updateCitySuggestions();
 
 function addOrUpdate(){
     const trip=tripSelect.value;
@@ -159,6 +183,7 @@ function addOrUpdate(){
         parcels.push(data);
     }
 
+    saveCity(city.value);
     clearForm();
     save();
     renderTrips();
@@ -194,7 +219,7 @@ function deleteParcel(id){
 function clearForm(){
     document.querySelectorAll("input").forEach(i=>{
         if(i.type==="checkbox") i.checked=false;
-        else i.value="";
+        else if(i.id!=="tripName") i.value="";
     });
 }
 
@@ -232,7 +257,7 @@ function renderTrips(){
         </div>
         <div class="summary">
             💰 ${total} грн |
-            <span class="green">Наша: ${totalOur}</span> |
+            <span class="green">Наша оплата: ${totalOur}</span> |
             <span class="yellow">Рахунок: ${totalInvoice}</span>
         </div>
         <div id="body_${trip}">
@@ -240,7 +265,7 @@ function renderTrips(){
         <table>
         <tr>
             <th>ПІБ</th><th>№</th><th>Місто</th><th>Обʼєм</th><th>Ціна</th>
-            <th>Наша</th><th>Рах.</th><th>✏️</th><th>❌</th>
+            <th>Наша оплата</th><th>Рахунок</th><th>✏️</th><th>❌</th>
         </tr>
         ${tripParcels.map(p=>`
             <tr>
