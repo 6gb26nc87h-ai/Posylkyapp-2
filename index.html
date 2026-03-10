@@ -2,273 +2,305 @@
 <html lang="uk">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Облік посилок V7.3</title>
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Облік посилок</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-
 <style>
-body { font-family:-apple-system,BlinkMacSystemFont,sans-serif; background:#f2f4f7; padding:12px; margin:0; }
-h2 { text-align:center; margin-bottom:10px; }
-input,select,button { width:100%; padding:10px; margin:5px 0; border-radius:10px; border:1px solid #ccc; font-size:16px; }
-button { background:#007aff; color:white; border:none; }
+* { box-sizing:border-box; }
+body { font-family:-apple-system,BlinkMacSystemFont,sans-serif; margin:0; padding:12px; background:#f2f4f7; }
+h2 { text-align:center; margin-bottom:10px; font-size:20px; }
+input, select, button { padding:10px; margin:5px 0; font-size:16px; border-radius:12px; border:1px solid #ccc; }
+input[type=number], input[type=text], input[type=tel] { width:100%; }
+.button-row { display:flex; gap:5px; flex-wrap:wrap; }
+button { background:#007aff; color:white; border:none; border-radius:12px; flex:1; min-width:48%; cursor:pointer; }
 button.delete { background:#ff3b30; }
-button.closeTrip { background:#ff9500; }
-.tableBox { background:white; padding:10px; border-radius:12px; margin-top:15px; }
-table { width:100%; border-collapse:collapse; }
-th { background:#007aff; color:white; padding:6px; font-size:13px; }
-td { padding:6px; font-size:12px; text-align:center; border-bottom:1px solid #eee; }
-.tripHeader { background:#d9ecff; padding:6px; border-radius:8px; margin-bottom:6px; font-weight:bold; cursor:pointer; }
+button.export { background:#34c759; margin-top:8px; width:100%; }
+button:active { transform:scale(0.97); }
+.table-wrapper { margin-top:20px; background:white; padding:8px; border-radius:14px; box-shadow:0 2px 6px rgba(0,0,0,0.05); overflow-x:auto; transition:max-height 0.3s ease; }
+table { min-width:900px; width:100%; border-collapse:collapse; transition:opacity 0.3s; }
+th, td { padding:6px; font-size:12px; text-align:center; border-bottom:1px solid #eee; }
+th { background:#007aff; color:white; font-size:13px; }
+.summary { font-weight:bold; font-size:14px; margin:8px 0; }
+.checkbox-inline { display:flex; align-items:center; gap:5px; margin:5px 0; font-size:14px; }
+.checkbox-inline input { margin:0; }
+.price-row { display:flex; gap:5px; align-items:center; flex-wrap:wrap; }
+.price-row input { flex:1; min-width:50%; }
+tr:hover { background:#e6f0ff; }
+.ourPaymentCell { color:#34c759; font-weight:bold; }
+.invoiceCell { color:#ff9500; font-weight:bold; }
+.tripHeader { cursor:pointer; padding:5px 0; background:#d9ecff; border-radius:8px; text-align:center; margin:5px 0; font-weight:bold; }
+.tripHeader:hover { background:#bde0ff; }
+@media (max-width: 420px){
+    input, select, button { font-size:14px; padding:8px; }
+    th, td { font-size:11px; padding:4px; }
+    h2 { font-size:18px; }
+}
 </style>
 </head>
 <body>
 
-<h2>Облік посилок V7.3</h2>
+<h2>Облік посилок</h2>
 
-<!-- Рейс -->
 <input id="tripName" placeholder="Назва рейсу">
-<input id="startNumber" type="number" placeholder="Початковий номер посилки">
 <button onclick="createTrip()">Створити рейс</button>
+
 <select id="tripSelect"></select>
-<button class="closeTrip" onclick="closeTrip()">Закрити рейс</button>
 <button class="delete" onclick="deleteTrip()">Видалити рейс</button>
 
-<hr>
-
-<!-- Поля для посилки -->
-<input id="parcelNumber" placeholder="Номер посилки">
-<input id="fullName" placeholder="ПІБ">
-<input id="phone" placeholder="Телефон">
-<input id="city" list="citiesList" placeholder="Місто">
+<input id="fullName" placeholder="Прізвище та Імʼя" type="text">
+<input id="parcelNumber" placeholder="Номер посилки" type="text" inputmode="numeric" pattern="[0-9]*">
+<input id="phone" placeholder="Телефон" type="tel" inputmode="numeric">
+<input id="city" list="citiesList" placeholder="Місто" type="text">
 <datalist id="citiesList"></datalist>
-<input id="branch" placeholder="Відділення НП">
+<input id="branch" placeholder="Відділення Нової Пошти" type="text">
+<input id="places" type="number" inputmode="numeric" placeholder="Кількість місць">
+<input id="volume" placeholder="Обʼємна вага (можна через ,)" type="text">
+<input id="weight" type="number" inputmode="decimal" placeholder="Фактична вага">
 
-<input id="places" type="number" placeholder="Місця">
-<input id="weight" type="number" placeholder="Вага">
-<input id="price" type="number" placeholder="Ціна">
+<div class="price-row">
+  <input id="price" type="number" inputmode="decimal" placeholder="Ціна">
+  <label class="checkbox-inline"><input type="checkbox" id="ourPayment"> Наша оплата</label>
+  <label class="checkbox-inline"><input type="checkbox" id="invoice"> Рахунок</label>
+</div>
 
-<label><input type="checkbox" id="ourPayment"> Наша оплата</label>
-<label><input type="checkbox" id="invoice"> Рахунок</label>
-
-<input id="note" placeholder="Примітка">
+<input id="note" placeholder="Примітка" type="text">
 <button onclick="addParcel()">Додати / Зберегти посилку</button>
-<button onclick="exportExcel()">Експорт Excel</button>
 
 <div id="tables"></div>
 
 <script>
-let parcels = JSON.parse(localStorage.getItem("parcels")) || [];
-let trips = JSON.parse(localStorage.getItem("trips")) || [];
-let closedTrips = JSON.parse(localStorage.getItem("closedTrips")) || [];
-let clients = JSON.parse(localStorage.getItem("clients")) || {};
-let userCities = JSON.parse(localStorage.getItem("userCities")) || [];
-let parcelCounter = Number(localStorage.getItem("parcelCounter")) || 1;
+let parcels = JSON.parse(localStorage.getItem("parcels"))||[];
+let trips = JSON.parse(localStorage.getItem("trips"))||[];
+let clients = JSON.parse(localStorage.getItem("clients"))||{};
+let userCities = JSON.parse(localStorage.getItem("userCities"))||[];
 let editId = null;
 
-const tripSelect = document.getElementById("tripSelect");
-const cityInput = document.getElementById("city");
+const cities = ["Київ","Харків","Одеса","Дніпро","Львів","Запоріжжя","Вінниця","Полтава","Чернігів","Черкаси","Хмельницький","Житомир","Суми","Рівне","Івано-Франківськ","Тернопіль","Луцьк","Ужгород","Кропивницький","Миколаїв"];
 const citiesList = document.getElementById("citiesList");
-const baseCities = ["Київ","Харків","Одеса","Дніпро","Львів","Запоріжжя","Вінниця","Полтава","Чернігів","Черкаси","Хмельницький","Житомир","Суми","Рівне","Івано-Франківськ","Тернопіль","Луцьк","Ужгород","Кропивницький","Миколаїв"];
-
-function save(){
-    localStorage.setItem("parcels", JSON.stringify(parcels));
-    localStorage.setItem("trips", JSON.stringify(trips));
-    localStorage.setItem("closedTrips", JSON.stringify(closedTrips));
-    localStorage.setItem("clients", JSON.stringify(clients));
-    localStorage.setItem("userCities", JSON.stringify(userCities));
-    localStorage.setItem("parcelCounter", parcelCounter);
-}
+const city = document.getElementById("city");
 
 function filterCities(query){
     citiesList.innerHTML = "";
-    [...baseCities,...userCities].filter(c=>c.toLowerCase().includes(query.toLowerCase()))
+    const allCities = [...cities,...userCities];
+    allCities.filter(c=>c.toLowerCase().includes(query.toLowerCase()))
         .forEach(c=>{
-            let opt = document.createElement("option");
+            const opt = document.createElement("option");
             opt.value = c;
             citiesList.appendChild(opt);
         });
 }
-cityInput.addEventListener("input", ()=>filterCities(cityInput.value));
+city.addEventListener("input",()=>filterCities(city.value));
 
-function saveCity(name){
-    if(name && !baseCities.includes(name) && !userCities.includes(name)){
-        userCities.push(name);
-        localStorage.setItem("userCities", JSON.stringify(userCities));
-    }
+function autoSave(){
+    localStorage.setItem("parcels", JSON.stringify(parcels));
+    localStorage.setItem("trips", JSON.stringify(trips));
+    localStorage.setItem("clients", JSON.stringify(clients));
+    localStorage.setItem("userCities", JSON.stringify(userCities));
 }
 
-function renderTrips(){
-    tripSelect.innerHTML="";
-    trips.forEach(t=>{
-        let o=document.createElement("option");
-        o.value=t;
-        o.textContent=closedTrips.includes(t)? t+" (закритий)" : t;
-        tripSelect.appendChild(o);
-    });
-    renderTables();
-}
-
+const tripSelect = document.getElementById("tripSelect");
 function createTrip(){
-    let name=document.getElementById("tripName").value.trim();
-    let start=Number(document.getElementById("startNumber").value);
-    if(!name) return;
-    if(!trips.includes(name)) trips.push(name);
-    if(start) parcelCounter=start;
-    document.getElementById("tripName").value="";
-    document.getElementById("startNumber").value="";
-    document.getElementById("parcelNumber").value=parcelCounter;
-    save();
+    const name = tripName.value.trim();
+    if(!name || trips.includes(name)) return;
+    trips.push(name);
+    autoSave();
     renderTrips();
+    tripName.value="";
 }
-
-function closeTrip(){
-    let trip=tripSelect.value;
-    if(!trip) return;
-    if(!closedTrips.includes(trip)) closedTrips.push(trip);
-    save();
-    renderTrips();
-}
-
 function deleteTrip(){
-    let trip=tripSelect.value;
+    const trip = tripSelect.value;
     if(!trip) return;
-    if(!confirm("Видалити рейс?")) return;
-    trips=trips.filter(t=>t!==trip);
-    parcels=parcels.filter(p=>p.trip!==trip);
-    closedTrips=closedTrips.filter(t=>t!==trip);
-    save();
+    if(!confirm("Видалити рейс і всі посилки?")) return;
+    trips = trips.filter(t=>t!==trip);
+    parcels = parcels.filter(p=>p.trip!==trip);
+    autoSave();
     renderTrips();
 }
 
 function addParcel(){
-    let trip=tripSelect.value;
+    const trip = tripSelect.value;
     if(!trip) return alert("Створіть рейс!");
-    if(closedTrips.includes(trip)) return alert("Рейс закритий");
 
-    let number=document.getElementById("parcelNumber").value || parcelCounter;
-    let cityName=cityInput.value;
-    saveCity(cityName);
-
-    let parcelData={
+    const parcelData = {
         id: editId || Date.now(),
         trip,
-        number,
-        fullName: document.getElementById("fullName").value,
-        phone: document.getElementById("phone").value,
-        city: cityName,
-        branch: document.getElementById("branch").value,
-        places:Number(document.getElementById("places").value||0),
-        weight:Number(document.getElementById("weight").value||0),
-        price:Number(document.getElementById("price").value||0),
-        ourPayment:document.getElementById("ourPayment").checked,
-        invoice:document.getElementById("invoice").checked,
-        note:document.getElementById("note").value
+        fullName: fullName.value,
+        number: parcelNumber.value,
+        phone: phone.value,
+        city: city.value,
+        branch: branch.value,
+        places: Number(places.value||0),
+        volume: volume.value,
+        weight: Number(weight.value||0),
+        price: Number(price.value||0),
+        ourPayment: document.getElementById("ourPayment").checked,
+        invoice: document.getElementById("invoice").checked,
+        note: note.value
     };
 
-    clients[parcelData.phone]=parcelData.fullName;
+    clients[phone.value] = fullName.value;
 
-    if(editId){
-        parcels=parcels.map(p=>p.id===editId ? parcelData : p);
-        editId=null;
-    }else{
-        parcels.push(parcelData);
+    if(city.value && !userCities.includes(city.value) && !cities.includes(city.value)){
+        userCities.push(city.value);
     }
 
-    parcelCounter=Number(number)+1;
-    document.getElementById("parcelNumber").value=parcelCounter;
+    if(editId){
+        parcels = parcels.map(p=>p.id===editId ? parcelData : p);
+        editId = null;
+    } else {
+        parcels.push(parcelData);
 
-    clearInputs();
-    save();
+        // --- ІНКРЕМЕНТ НОМЕРА ---
+        let currentNumber = Number(parcelNumber.value);
+        if(!isNaN(currentNumber)){
+            parcelNumber.value = currentNumber + 1;
+        }
+    }
+
+    autoSave();
     renderTables();
+    clearInputs();
 }
 
 function clearInputs(){
-    ["fullName","phone","city","branch","places","weight","price","note"].forEach(id=>document.getElementById(id).value="");
+    fullName.value="";
+    phone.value="";
+    city.value="";
+    branch.value="";
+    places.value="";
+    volume.value="";
+    weight.value="";
+    price.value="";
+    note.value="";
     document.getElementById("ourPayment").checked=false;
     document.getElementById("invoice").checked=false;
+    // номер посилки не очищається, бо він вже інкрементувався
 }
 
-const fieldOrder=["parcelNumber","fullName","phone","city","branch","places","weight","price","note"];
-fieldOrder.forEach((id,i)=>{
-    document.getElementById(id).addEventListener("keydown",e=>{
+function deleteParcel(id){
+    parcels = parcels.filter(p=>p.id!==id);
+    autoSave();
+    renderTables();
+}
+
+function editParcel(id){
+    const p = parcels.find(p=>p.id===id);
+    if(!p) return;
+    editId = id;
+    fullName.value = p.fullName;
+    parcelNumber.value = p.number;
+    phone.value = p.phone;
+    city.value = p.city;
+    branch.value = p.branch;
+    places.value = p.places;
+    volume.value = p.volume;
+    weight.value = p.weight;
+    price.value = p.price;
+    document.getElementById("ourPayment").checked = p.ourPayment;
+    document.getElementById("invoice").checked = p.invoice;
+    note.value = p.note;
+}
+
+function renderTrips(){
+    tripSelect.innerHTML="";
+    trips.forEach(trip=>{
+        let option=document.createElement("option");
+        option.value=trip;
+        option.textContent=trip;
+        tripSelect.appendChild(option);
+    });
+    renderTables();
+}
+
+const tables = document.getElementById("tables");
+function renderTables(){
+    tables.innerHTML="";
+    trips.forEach(trip=>{
+        const tripParcels = parcels.filter(p=>p.trip===trip);
+        if(tripParcels.length===0) return;
+        const totalPrice = tripParcels.reduce((s,p)=>s+p.price,0);
+        const totalWeight = tripParcels.reduce((s,p)=>s+p.weight,0);
+        const totalPlaces = tripParcels.reduce((s,p)=>s+p.places,0);
+
+        let wrapper=document.createElement("div");
+        wrapper.className="table-wrapper";
+
+        wrapper.innerHTML=`
+            <div class="tripHeader" onclick="toggleTable(this)">
+                ${trip} | 💰 ${totalPrice} € | ⚖️ ${totalWeight} кг | 📦 ${totalPlaces}
+            </div>
+            <div class="tableContent" style="display:none;">
+                <button class="export" onclick="exportExcel('${trip}')">Експорт Excel</button>
+                <table>
+                    <tr>
+                        <th>ПІБ</th><th>Номер</th><th>Телефон</th><th>Місто</th><th>Відділення</th>
+                        <th>Місця</th><th>Обʼєм</th><th>Вага</th><th>Ціна</th><th>Наша оплата</th><th>Рахунок</th><th>Дії</th>
+                    </tr>
+                    ${tripParcels.map(p=>`
+                        <tr>
+                            <td>${p.fullName}</td>
+                            <td>${p.number}</td>
+                            <td>${p.phone}</td>
+                            <td>${p.city}</td>
+                            <td>${p.branch}</td>
+                            <td>${p.places}</td>
+                            <td>${p.volume}</td>
+                            <td>${p.weight}</td>
+                            <td>${p.price}</td>
+                            <td class="ourPaymentCell">${p.ourPayment?"✓":""}</td>
+                            <td class="invoiceCell">${p.invoice?"✓":""}</td>
+                            <td>
+                                <button class="delete" onclick="editParcel(${p.id})">✎</button>
+                                <button class="delete" onclick="deleteParcel(${p.id})">X</button>
+                            </td>
+                        </tr>
+                    `).join("")}
+                </table>
+            </div>
+        `;
+        tables.appendChild(wrapper);
+    });
+}
+
+function toggleTable(header){
+    const content = header.nextElementSibling;
+    content.style.display = content.style.display==="none" ? "block" : "none";
+}
+
+function exportExcel(trip){
+    const tripParcels = parcels.filter(p=>p.trip===trip);
+    if(!tripParcels.length) return alert("Немає даних для експорту!");
+    const headersMap = {fullName:"ПІБ", number:"Номер", phone:"Телефон", city:"Місто", branch:"Відділення", places:"Місця", volume:"Обʼєм", weight:"Вага", price:"Ціна", ourPayment:"Наша оплата", invoice:"Рахунок", note:"Примітка"};
+    const data = tripParcels.map(p=>{
+        let obj={};
+        for(let k in headersMap) obj[headersMap[k]] = p[k] || '';
+        if(p.ourPayment) obj["Наша оплата"]="✓";
+        if(p.invoice) obj["Рахунок"]="✓";
+        return obj;
+    });
+    const ws = XLSX.utils.json_to_sheet(data);
+    ws['!cols'] = Object.keys(data[0]).map(k=>({wch:Math.max(...data.map(r=>String(r[k]).length),k.length)+5}));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, trip);
+    XLSX.writeFile(wb, `Рейс_${trip}.xlsx`);
+}
+
+phone.addEventListener("blur", function(){
+    if(clients[this.value]) fullName.value = clients[this.value];
+});
+
+const fields = ["fullName","parcelNumber","phone","city","branch","places","volume","weight","price","note"];
+fields.forEach((id,index)=>{
+    document.getElementById(id).addEventListener("keydown", function(e){
         if(e.key==="Enter"){
             e.preventDefault();
-            if(i<fieldOrder.length-1) document.getElementById(fieldOrder[i+1]).focus();
+            if(index<fields.length-1) document.getElementById(fields[index+1]).focus();
             else addParcel();
         }
     });
 });
 
-function renderTables(){
-    let tables=document.getElementById("tables");
-    tables.innerHTML="";
-    trips.forEach(trip=>{
-        let data=parcels.filter(p=>p.trip===trip);
-        if(!data.length) return;
-        let totalPrice=data.reduce((s,p)=>s+p.price,0);
-        let totalWeight=data.reduce((s,p)=>s+p.weight,0);
-        let box=document.createElement("div");
-        box.className="tableBox";
-        box.innerHTML=`
-            <div class="tripHeader">${trip} | 💰 ${totalPrice} грн | 📦 ${data.length} | ⚖️ ${totalWeight} кг</div>
-            <table>
-                <tr>
-                    <th>№</th><th>ПІБ</th><th>Тел</th><th>Місто</th><th>Вага</th><th>Ціна</th><th>Наш</th><th>Рахунок</th><th>Дії</th>
-                </tr>
-                ${data.map(p=>`
-                    <tr>
-                        <td>${p.number}</td>
-                        <td>${p.fullName}</td>
-                        <td>${p.phone}</td>
-                        <td>${p.city}</td>
-                        <td>${p.weight}</td>
-                        <td>${p.price}</td>
-                        <td>${p.ourPayment?"✓":""}</td>
-                        <td>${p.invoice?"✓":""}</td>
-                        <td>
-                            <button class="delete" onclick="editParcel(${p.id})">✎</button>
-                            <button class="delete" onclick="deleteParcel(${p.id})">X</button>
-                        </td>
-                    </tr>`).join("")}
-            </table>
-        `;
-        tables.appendChild(box);
-    });
-}
-
-function deleteParcel(id){ parcels=parcels.filter(p=>p.id!==id); save(); renderTables(); }
-
-function editParcel(id){
-    const p=parcels.find(p=>p.id===id);
-    if(!p) return;
-    editId=id;
-    document.getElementById("parcelNumber").value=p.number;
-    document.getElementById("fullName").value=p.fullName;
-    document.getElementById("phone").value=p.phone;
-    document.getElementById("city").value=p.city;
-    document.getElementById("branch").value=p.branch;
-    document.getElementById("places").value=p.places;
-    document.getElementById("weight").value=p.weight;
-    document.getElementById("price").value=p.price;
-    document.getElementById("ourPayment").checked=p.ourPayment;
-    document.getElementById("invoice").checked=p.invoice;
-    document.getElementById("note").value=p.note;
-}
-
-function exportExcel(){
-    let trip=tripSelect.value;
-    if(!trip) return alert("Оберіть рейс");
-    let data=parcels.filter(p=>p.trip===trip);
-    if(!data.length) return alert("Немає даних");
-    let ws=XLSX.utils.json_to_sheet(data);
-    let wb=XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb,ws,trip);
-    XLSX.writeFile(wb,`Рейс_${trip}.xlsx`);
-}
-
 renderTrips();
-document.getElementById("parcelNumber").value=parcelCounter;
 </script>
-
 </body>
 </html>
