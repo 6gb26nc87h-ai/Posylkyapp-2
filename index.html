@@ -138,8 +138,12 @@ function addParcel(){
         note: note.value
     };
 
-    clients[phone.value] = fullName.value;
-
+    // Зберігаємо дані клієнта по номеру телефону
+clients[phone.value] = {
+    fullName: fullName.value,
+    city: city.value,
+    branch: branch.value
+};
     if(city.value && !userCities.includes(city.value) && !cities.includes(city.value)){
         userCities.push(city.value);
     }
@@ -286,7 +290,12 @@ function exportExcel(trip){
 }
 
 phone.addEventListener("blur", function(){
-    if(clients[this.value]) fullName.value = clients[this.value];
+    const data = clients[this.value];
+    if(data){
+        fullName.value = data.fullName || "";
+        city.value = data.city || "";
+        branch.value = data.branch || "";
+    }
 });
 
 const fields = ["fullName","parcelNumber","phone","city","branch","places","volume","weight","price","note"];
