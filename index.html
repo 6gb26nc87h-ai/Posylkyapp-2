@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Облік посилок</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+body { font-family:sans-serif; background:#f2f4f7; padding:10px; }
+input, button, select { width:100%; margin:5px 0; padding:10px; border-radius:10px; border:1px solid #ccc; }
+
+button { background:#007aff; color:white; border:none; }
+button.delete { background:#ff3b30; }
+button.export { background:#34c759; }
+
+.ourPaymentCell { background:#e6f9ee; color:#34c759; font-weight:bold; }
+.invoiceCell { background:#fff4e5; color:#ff9500; font-weight:bold; }
+
+.table-wrapper { background:white; padding:10px; margin-top:15px; border-radius:10px; }
+table { width:100%; border-collapse:collapse; font-size:12px; }
+th, td { border-bottom:1px solid #eee; padding:5px; text-align:center; }
+th { background:#007aff; color:white; }
+
+.tripHeader { background:#d9ecff; padding:5px; border-radius:6px; margin:5px 0; cursor:pointer; }
+</style>
+</head>
+
+<body>
+
+<h2>Облік посилок</h2>
+
+<input id="tripName" placeholder="Назва рейсу">
+<button onclick="createTrip()">Створити рейс</button>
+
+<select id="tripSelect"></select>
+<button onclick="toggleTripStatus()">Закрити / Відкрити рейс</button>
+<button class="delete" onclick="deleteTrip()">Видалити рейс</button>
+
+<input id="fullName" placeholder="ПІБ">
+<input id="parcelNumber" placeholder="Номер посилки">
+<input id="phone" placeholder="Телефон">
+<input id="city" placeholder="Місто">
+<input id="branch" placeholder="Відділення">
+<input id="places" type="number" placeholder="Місця">
+<input id="volume" placeholder="Обʼєм">
+<input id="weight" type="number" placeholder="Вага">
+
+<input id="price" type="number" placeholder="Ціна">
+<label><input type="checkbox" id="ourPayment"> Наша оплата</label>
+<label><input type="checkbox" id="invoice"> Рахунок</label>
+
+<input id="note" placeholder="Примітка">
+<button onclick="addParcel()">Додати</button>
+
+<div id="tables"></div>
+
+<script>
+let parcels = JSON.parse(localStorage.getItem("parcels"))||[];
+let trips = JSON.parse(localStorage.getItem("trips"))||[];
+
+// фікс старих рейсів
+trips = trips.map(t => typeof t === "string" ? {name:t, closed:false} : t);
+
+let editId = null;
+
+function autoSave(){
+    localStorage.setItem("parcels", JSON.stringify(parcels));
+    localStorage.setItem("trips", JSON.stringify(trips));
+}
+
+function createTrip(){
+    const name = tripName.value.trim();
+    if(!name || trips.find(t=>t.name===name)) return;
+
+    trips.push({name, closed:false});
+    autoSave();
+    renderTrips();
+    tripName.value="";
+}
+
+function deleteTrip(){
+    const trip = tripSelect.value;
+    if(!trip) return;
+    if(!confirm("Видалити рейс?")) return;
+
+    trips = trips.filter(t=>t.name!==trip);
+    parcels = parcels.filter(p=>p.trip!==trip);
+
+    autoSave();
+    renderTrips();
+}
+
+function toggleTripStatus(){
+    const trip = trips.find(t=>t.name===tripSelect.value);
+    if(!trip) return;
+
+    trip.closed = !trip.closed;
+    autoSave();
+    renderTrips();
+}
+
+function addParcel(){
+    const trip = tripSelect.value;
+    const tripObj = trips.find(t=>t.name===trip);
+
+    if(!trip) return alert("Створи рейс");
+    if(tripObj.closed) return alert("Рейс закритий");
+
+    const data = {
+        id: editId || Date.now(),
+        trip,
+        fullName: fullName.value,
+        number: parcelNumber.value,
+        phone: phone.value,
+        city: city.value,
+        branch: branch.value,
+        places: Number(places.value||0),
+        volume: volume.value,
+        weight: Number(weight.value||0),
+        price: Number(price.value||0),
+        ourPayment: ourPayment.checked,
+        invoice: invoice.checked,
+        note: note.value
+    };
+
+    if(editId){
+        parcels = parcels.map(p=>p.id===editId?data:p);
+        editId=null;
+    } else {
+        parcels.push(data);
+
+        let n = Number(parcelNumber.value);
+        if(!isNaN(n)) parcelNumber.value = n+1;
+    }
+
+    autoSave();
+    renderTables();
+}
+
+function deleteParcel(id){
+    parcels = parcels.filter(p=>p.id!==id);
+    autoSave();
+    renderTables();
+}
+
+function editParcel(id){
+    const p = parcels.find(p=>p.id===id);
+    editId = id;
+
+    fullName.value=p.fullName;
+    parcelNumber.value=p.number;
+    phone.value=p.phone;
+    city.value=p.city;
+    branch.value=p.branch;
+    places.value=p.places;
+    volume.value=p.volume;
+    weight.value=p.weight;
+    price.value=p.price;
+    ourPayment.checked=p.ourPayment;
+    invoice.checked=p.invoice;
+    note.value=p.note;
+}
+
+function renderTrips(){
+    tripSelect.innerHTML="";
+    trips.forEach(t=>{
+        let o=document.createElement("option");
+        o.value=t.name;
+        o.textContent=t.name + (t.closed?" 🔒":"");
+        tripSelect.appendChild(o);
+    });
+    renderTables();
+}
+
+function renderTables(){
+    tables.innerHTML="";
+
+    trips.forEach(t=>{
+        let tripParcels = parcels
+            .filter(p=>p.trip===t.name)
+            .sort((a,b)=>parseInt(a.number)-parseInt(b.number));
+
+        if(!tripParcels.length) return;
+
+        let div=document.createElement("div");
+        div.className="table-wrapper";
+
+        div.innerHTML=`
+        <div class="tripHeader">${t.name}</div>
+        <table>
+        <tr>
+        <th>ПІБ</th><th>№</th><th>Тел</th><th>Місто</th><th>Відд</th>
+        <th>М</th><th>Обʼєм</th><th>Вага</th><th>€</th><th>Оплата</th><th>Рах</th><th></th>
+        </tr>
+
+        ${tripParcels.map(p=>`
+        <tr>
+        <td>${p.fullName}</td>
+        <td>${p.number}</td>
+        <td>${p.phone}</td>
+        <td>${p.city}</td>
+        <td>${p.branch}</td>
+        <td>${p.places}</td>
+        <td>${p.volume}</td>
+        <td>${p.weight}</td>
+        <td>${p.price}</td>
+        <td class="${p.ourPayment?'ourPaymentCell':''}">${p.ourPayment?'✓':''}</td>
+        <td class="${p.invoice?'invoiceCell':''}">${p.invoice?'✓':''}</td>
+        <td>
+        <button onclick="editParcel(${p.id})">✎</button>
+        <button onclick="deleteParcel(${p.id})">X</button>
+        </td>
+        </tr>
+        `).join("")}
+
+        </table>
+        `;
+
+        tables.appendChild(div);
+    });
+}
+
+renderTrips();
+</script>
+
+</body>
+</html>
